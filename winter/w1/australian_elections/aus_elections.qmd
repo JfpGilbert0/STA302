@@ -1,0 +1,176 @@
+---
+title: "exploring 2022 AUS election"
+author: "Jacob Gilbert"
+format: html
+---
+
+```{r}
+### Preamble ###
+# Purpose: TO read in data from 2022 Australian election # and graph number of seats won per party
+# Author...
+# email
+# date:
+# prereq:
+```
+\
+```{r}
+## env setup ##
+#install.packages("tidyverse")
+#install.packages("janitor")
+
+library("tidyverse")
+library("janitor")
+
+```
+
+```{r}
+# SIMULATE what useful data would look like
+simulated_data <-
+  tibble(
+    # Use 1 through to 151 to represent each division
+    "Division" = 1:151,
+    # Randomly pick an option, with replacement, 151 times
+    "Party" = sample(
+      x = c("Liberal", "Labor", "National", "Green", "Other"),
+      size = 151,
+      replace = TRUE
+    )
+  )
+
+simulated_data
+```
+
+```{r}
+### AQUIRE data ###
+raw_elections_data <-
+  read_csv(
+    file = 
+      "https://results.aec.gov.au/27966/website/Downloads/HouseMembersElectedDownload-27966.csv",
+    show_col_types = FALSE,
+    skip = 1
+  )
+
+# save locally
+write_csv(
+  x = raw_elections_data,
+  file = "australian_voting.csv"
+)
+
+head(raw_elections_data)
+tail(raw_elections_data)
+```
+
+```{r}
+# Cleaning #
+raw_elections_data <- 
+  read_csv(
+    file = "australian_voting.csv",
+    show_col_types = FALSE
+  )
+# System recognizes / autofills names
+cleaned_election_data <- 
+  clean_names(raw_elections_data)
+```
+
+```{r}
+## Selects columns we want ##
+cleaned_election_data <-
+  cleaned_election_data |>
+  select(
+    division_nm,
+    party_nm
+  )
+head(cleaned_election_data)
+```
+
+```{r}
+##Renames variable ##
+cleaned_election_data <-
+  cleaned_election_data |>
+  rename(
+    division = division_nm,
+    elected_party = party_nm
+  )
+
+names(cleaned_election_data)
+```
+
+```{r}
+ #Selects unique objects from column preceeding $
+cleaned_election_data$elected_party |>
+  unique()
+```
+
+```{r}
+## Mutate and Case Match allows editing of fields  in whole dataset
+cleaned_election_data <-
+  cleaned_election_data |>
+  mutate(
+    elected_party = 
+      case_match(
+        elected_party,
+        "Australian Labor Party" ~ "Labor",
+        "Liberal National Party of Queensland" ~ "Liberal",
+        "Liberal" ~ "Liberal",
+        "The Nationals" ~ "Nationals",
+        "The Greens" ~ "Greens",
+        "Independent" ~ "Other",
+        "Katter's Australian Party (KAP)" ~ "Other",
+        "Centre Alliance" ~ "Other"
+      )
+  )
+head(cleaned_election_data$elected_party)
+```
+
+```{r}
+### Save cleaned dataset ###
+write_csv(
+  x = cleaned_election_data,
+  file = "cleaned_elections_data.csv"
+)
+```
+
+```{r}
+### EXPLORE PART ###
+
+#### Read in the data ####
+cleaned_elections_data <-
+  read_csv(
+    file = "cleaned_elections_data.csv",
+    show_col_types = FALSE
+  )
+
+```
+
+```{r}
+# use count() func from dplyr to count votes
+cleaned_elections_data |>
+  count(elected_party)
+```
+
+```{r}
+## Graph Building!! ##
+##use '+' to extend detail of what ggplot does
+
+cleaned_elections_data |>
+  ggplot(aes(x = elected_party)) + # aes abbreviates "aesthetics" 
+  geom_bar()
+
+cleaned_elections_data |>
+  ggplot(aes(x = elected_party)) +
+  geom_bar() +
+  theme_minimal() + # Make the theme neater
+  labs(x = "Party", y = "Number of seats") # Make labels more meaningful
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+```{r}
+
+```
