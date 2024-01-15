@@ -1,0 +1,165 @@
+---
+title: "neonatal_mortality"
+author: "jacob gilbert"
+format: html
+---
+
+```{r}
+### Preamble ###
+# Purpose: Obtain and prepare data about neonatal mortality for four countries for the past fifty years and create a graph.
+# Author: Jacob Gilbert
+# Email: j.gilbert@mail.utoronto.ca
+# date: 13-01-2024
+# prereq:
+```
+
+```{r}
+### workspace setup ###
+library(janitor)
+library(lubridate)
+library(tidyverse)
+```
+
+```{r}
+#### Simulate data ####
+set.seed(853)
+
+simulated_nmr_data <-
+  tibble(
+    country =
+      c(rep("Argentina", 50), rep("Australia", 50), 
+        rep("Canada", 50), rep("Kenya", 50)),
+    year =
+      rep(c(1971:2020), 4),
+    nmr =
+      runif(n = 200, min = 0, max = 100)
+  )
+
+head(simulated_nmr_data)
+```
+
+```{r}
+## replace instances of 50 with a variable to make code easier to change ##
+#### Simulate data ####
+set.seed(853)
+
+number_of_years <- 50
+
+simulated_nmr_data <-
+  tibble(
+    country =
+      c(rep("Argentina", number_of_years), rep("Australia", number_of_years),
+        rep("Canada", number_of_years), rep("Kenya", number_of_years)),
+    year =
+      rep(c(1:number_of_years + 1970), 4),
+    nmr =
+      runif(n = number_of_years * 4, min = 0, max = 100)
+  )
+
+head(simulated_nmr_data)
+```
+
+```{r}
+### Testing###
+simulated_nmr_data$country |>
+  unique() == c("Argentina", "Australia", "Canada", "Kenya")
+
+simulated_nmr_data$country |>
+  unique() |>
+  length() == 4
+
+simulated_nmr_data$year |> min() == 1971
+simulated_nmr_data$year |> max() == 2020
+simulated_nmr_data$nmr |> min() >= 0
+simulated_nmr_data$nmr |> max() <= 1000
+simulated_nmr_data$nmr |> class() == "numeric"
+```
+
+```{r}
+#### Acquire data ####
+raw_igme_data <-
+  read_csv(
+    file =
+      "https://childmortality.org/wp-content/uploads/2021/09/UNIGME-2021.csv",
+    show_col_types = FALSE
+  )
+
+write_csv(x = raw_igme_data, file = "igme.csv")
+
+names(raw_igme_data)
+```
+
+```{r}
+# clean data: grab columns #
+cleaned_igme_data <-
+  clean_names(raw_igme_data) |>
+  filter(
+    sex == "Total",
+    series_name == "UN IGME estimate",
+    geographic_area %in% c("Argentina", "Australia", "Canada", "Kenya"),
+    indicator == "Neonatal mortality rate"
+    ) |>
+  select(geographic_area, time_period, obs_value)
+
+head(cleaned_igme_data)
+
+## change date structure and rename columns ##
+cleaned_igme_data <-
+  cleaned_igme_data |>
+  mutate(
+    time_period = str_remove(time_period, "-06"),
+    time_period = as.integer(time_period)
+  ) |>
+  filter(time_period >= 1971) |>
+  rename(nmr = obs_value, year = time_period, country = geographic_area)
+
+head(cleaned_igme_data)
+```
+
+```{r}
+# apply tests #
+cleaned_igme_data$country |>
+  unique() == c("Argentina", "Australia", "Canada", "Kenya")
+
+cleaned_igme_data$country |>
+  unique() |>
+  length() == 4
+
+cleaned_igme_data$year |> min() == 1971
+
+cleaned_igme_data$year |> max() == 2020
+
+cleaned_igme_data$nmr |> min() >= 0
+
+cleaned_igme_data$nmr |> max() <= 1000
+
+cleaned_igme_data$nmr |> class() == "numeric"
+```
+
+```{r}
+## save ##
+write_csv(x = cleaned_igme_data, file = "cleaned_igme_data.csv")
+```
+
+
+```{r}
+#### Explore ####
+cleaned_igme_data <-
+  read_csv(
+    file = "cleaned_igme_data.csv",
+    show_col_types = FALSE
+  )
+```
+
+```{r}
+# Graph time#
+cleaned_igme_data |>
+  ggplot(aes(x = year, y = nmr, color = country)) +
+  geom_point() +
+  theme_minimal() +
+  labs(x = "Year", y = "Neonatal Mortality Rate (NMR)", color = "Country") +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")
+```
+
+
