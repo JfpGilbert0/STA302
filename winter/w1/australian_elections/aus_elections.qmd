@@ -163,14 +163,3 @@ cleaned_elections_data |>
   labs(x = "Party", y = "Number of seats") # Make labels more meaningful
 
 ```
-
-```{r}
-
-```
-
-```{r}
-
-```
-```{r}
-
-```

@@ -1,0 +1,134 @@
+---
+title: "exploring 2022 AUS election"
+author: "Jacob Gilbert"
+format: html
+---
+
+```{r}
+### Preamble ###
+# Purpose: To read Toronto shelter data from 2021 and analyze monthy occupancy rates
+# Author: Jacob Gilbert
+# Email: j.gilbert@mail.utoronto.ca
+# date: 13-01-2024
+# prereq:
+```
+
+```{r}
+### enviroment setup ####
+# install.packages("opendatatoronto")
+# install.packages("knitr")
+
+library(knitr)
+library(janitor)
+library(lubridate)
+library(opendatatoronto)
+library(tidyverse)
+```
+
+```{r}
+#### Simulate ####
+set.seed(853)
+
+simulated_occupancy_data <-
+  tibble(
+    date = rep(x = as.Date("2021-01-01") + c(0:364), times = 3),
+    # Based on Eddelbuettel: https://stackoverflow.com/a/21502386
+    shelter = c(
+      rep(x = "Shelter 1", times = 365),
+      rep(x = "Shelter 2", times = 365),
+      rep(x = "Shelter 3", times = 365)
+    ),
+    number_occupied =
+      rpois(
+        n = 365 * 3,
+        lambda = 30
+      ) # Draw 1,095 times from the Poisson distribution
+  )
+
+head(simulated_occupancy_data)
+```
+
+```{r}
+
+#### Acquire ####
+#collect data from opendatatoronto package installed above #
+
+toronto_shelters <-
+  # Each package is associated with a unique id  found in the "For 
+  # Developers" tab of the relevant page from Open Data Toronto
+  # https://open.toronto.ca/dataset/daily-shelter-overnight-service-occupancy-capacity/
+  list_package_resources("21c83b32-d5a8-4106-a54f-010dbe49f6f2") |>
+  # Within that package, we are interested in the 2021 dataset
+  filter(name == 
+    "daily-shelter-overnight-service-occupancy-capacity-2021.csv") |>
+  # Having reduced the dataset to one row we can get the resource
+  get_resource()
+
+write_csv(
+  x = toronto_shelters,
+  file = "toronto_shelters.csv"
+)
+
+names(toronto_shelters)
+head(toronto_shelters)
+
+```
+
+```{r}
+## clean teh data ( should probably get rid of the NA's) ##
+toronto_shelters_clean <-
+  clean_names(toronto_shelters) |>
+  mutate(occupancy_date = ymd(occupancy_date)) |> 
+  select(occupancy_date, occupied_beds)
+
+head(toronto_shelters_clean)
+tail(toronto_shelters_clean)
+```
+
+```{r}
+## Save this data ##
+write_csv(
+  x = toronto_shelters_clean,
+  file = "cleaned_toronto_shelters.csv"
+)
+```
+
+```{r}
+#### Explore ####
+# first opening the data #
+toronto_shelters_clean <-
+  read_csv(
+    "cleaned_toronto_shelters.csv",
+    show_col_types = FALSE
+  )
+
+```
+
+```{r}
+## Gonna mess with the data now to get what we want,
+##Removing NA's (done in cleaning??) with drop_na() from tidyr
+## mutating the data with a month column using lubridate
+#summarize() from dplyr
+
+toronto_shelters_clean |>
+  mutate(occupancy_month = month(
+    occupancy_date,
+    label = TRUE,
+    abbr = FALSE #'abbreviate' month
+  )) |>
+  arrange(month(occupancy_date)) |> 
+  drop_na(occupied_beds) |> 
+  summarise(number_occupied = mean(occupied_beds), #avg occupied beds per per day grouped by month
+            .by = occupancy_month) |>
+  kable(col.names = c("Month", "Avg daily occupied beds")
+        ,digits = 1
+        )
+```
+
+```{r}
+##shall we make a bar graph ##
+toronto_shelters_clean |>
+    ggplot(aes(x = number_occupied)) +
+    geom_bar()
+```
+
