@@ -17,3 +17,35 @@ tibble(year = 1875:1972,
 ## sol: used a |> instead of + for graph geom_plot
 
 ```
+
+
+
+```{R}
+library(leaflet)
+
+location_data <- data.frame(
+  latitude = c(37.7749, 34.0522, 41.8781),  # Example latitudes
+  longitude = c(-122.4194, -118.2437, -87.6298)  # Example longitudes
+)
+
+# Create a leaflet map and add markers
+map <-
+  leaflet(location_data) %>%
+  addTiles() %>%
+  addMarkers(
+    lng = ~longitude,
+    lat = ~latitude,
+    label = ~paste("Latitude:", latitude, "<br>Longitude:", longitude)
+  )
+
+map
+
+
+# Create a leaflet map
+m <- leaflet() %>%
+  addTiles() %>%
+  addMarkers(lng = -73.9857, lat = 40.7484, popup = "Marker at NYC")
+
+# Print the leaflet map
+m
+```

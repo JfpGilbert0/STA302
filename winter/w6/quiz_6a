@@ -1,0 +1,16 @@
+library(tidyverse)
+
+set.seed(123)
+
+# Create a dataset
+shop_data <- tibble(
+  hour = rep(9:17, each = 2),  # Hours of operation
+  employee = rep(c("Employee_A", "Employee_B"), times = 8),  # Two employees
+  customers_served = c(
+    # Simulated data with a positive correlation
+    5, 8, 6, 9, 8, 12, 10, 14, 12, 16, 15, 18, 13, 16, 14, 20
+  )
+)
+
+# Print the dataset
+print(shop_data)

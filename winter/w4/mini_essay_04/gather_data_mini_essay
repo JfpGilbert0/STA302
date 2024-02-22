@@ -1,0 +1,74 @@
+library(tidyverse)
+library(usethis)
+library(xml2)
+library(janitor)
+library(rvest)
+library(dplyr)
+
+# WIkkipedia Canadian PM file
+raw_pm_data <-
+  read_html("https://en.wikipedia.org/wiki/List_of_prime_ministers_of_Australia")
+
+write_html(raw_pm_data, "pmsaus.html")
+
+raw_aus_data <- read_html("pmsaus.html")
+
+parse_table_selector <-
+  raw_aus_data |>
+  html_element(".wikitable") |>
+  html_table()
+
+colnames(parsed_data)
+
+#Clean names and remove duplicates
+parsed_data <-
+  parse_table_selector |>
+  clean_names() |>
+  rename(raw_text = name_birth_death_constituency) |>
+  select(raw_text) |>
+  filter(raw_text != "Name(Birth–Death)Constituency") |>
+  distinct()
+
+tail(parsed_data$raw_text)
+
+#parse text
+initial_clean <-
+  parsed_data |>
+  separate(
+    raw_text, into = c("name", "not_name"), sep = "\\(", extra = "merge",
+  ) |> 
+  mutate(date = str_extract(not_name, "[[:digit:]]{4}–[[:digit:]]{4}"),
+         birth = str_extract(not_name, "[[:digit:]]{4}")
+         ) |>
+  select(name, date, birth)
+
+tail(initial_clean)
+
+cleaned <-
+  initial_clean |>
+  separate(date, into = c("born", "died"), sep = "–") |>
+  mutate(born = if_else(is.na(born), birth, born)) |>
+  mutate(
+         across(c(born,died), as.integer),
+         age_at_death = died - born) |>
+  distinct() |>
+  select(name, born, died, age_at_death)
+
+tail(cleaned)
+#Graph cleaned data
+cleaned |>
+  mutate(
+    still_alive = if_else(is.na(died), "Yes", "No"),
+    died = if_else(is.na(died), as.integer(2023), died)
+  ) |>
+  mutate(name = as_factor(name)) |>
+  ggplot(
+    aes(x = born, xend = died, y = name, yend = name, color = still_alive)
+    ) +
+  geom_segment() +
+  labs(
+    x = "Year of birth", y = "Prime minister", color = "PM is currently alive"
+    ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")

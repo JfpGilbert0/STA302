@@ -1,0 +1,168 @@
+library(cancensus)
+library(canlang)
+library(knitr)
+library(maps)
+library(tidycensus)
+library(tidyverse)
+
+
+## illustrate truncated data ##
+set.seed(853)
+
+newborn_weight <-
+  tibble(
+    weight = rep(
+                 x = rnorm(n = 1000, mean = 3.5, sd = 0.5), 
+                 times = 3),
+    measurement = rep(
+                      x = c("Actual", "Censored", "Truncated"),
+                      each = 1000)
+  )
+
+newborn_weight <-
+  newborn_weight |>
+  mutate(
+    weight = case_when(
+      weight <= 2.75 & measurement == "Censored" ~ 2.75,
+      weight >= 4.25 & measurement == "Truncated" ~ NA_real_,
+      TRUE ~ weight
+    )
+  )
+
+newborn_weight |>
+  ggplot(aes(x = weight)) +
+  geom_histogram(bins = 50) +
+  facet_wrap(vars(measurement)) +
+  theme_minimal()
+
+newborn_weight |>
+  summarise(mean = mean(weight, na.rm = TRUE),
+            .by = measurement) |>
+  kable(
+    col.names = c("Measurement", "Mean"),
+    digits = 3
+  )
+
+## Census Data ##
+
+can_lang
+
+# Mother tongue
+can_lang |>
+  slice_max(mother_tongue, n = 10) |>
+  select(language, mother_tongue)
+
+# By region
+
+region_lang |>
+  left_join(region_data, by = "region") |>
+  slice_max(c(population)) |>
+  slice_max(mother_tongue, n = 5) |>
+  select(region, language, mother_tongue, population) |>
+  mutate(prop = mother_tongue / population)
+
+region_lang |>
+  left_join(region_data, by = "region") |>
+  slice_min(c(population)) |>
+  slice_max(mother_tongue, n = 5) |>
+  select(region, language, mother_tongue, population) |>
+  mutate(prop = mother_tongue / population)
+
+# Get census data from cancensus
+
+# set_cancensus_api_key("CensusMapper_688350993d46b3d828c4d48ce97b3d19", install = TRUE)
+
+ontario_population <-
+  get_census(
+    dataset = "CA16",
+    level = "Regions",
+    vectors = "v_CA16_1",
+    regions = list(PR = c("35"))
+  )
+
+ontario_population
+
+## Sampling Methods ##
+
+## probability sampling
+
+set.seed(853)
+
+illustrative_sampling <- tibble(
+  unit = 1:100,
+  simple_random_sampling =
+    sample(x = c("In", "Out"), 
+           size = 100, 
+           replace = TRUE, 
+           prob = c(0.2, 0.8))
+  )
+
+illustrative_sampling |>
+  count(simple_random_sampling)
+
+# systematic sampling
+
+set.seed(853)
+
+starting_point <- sample(x = c(1:5), size = 1)
+
+illustrative_sampling <-
+  illustrative_sampling |>
+  mutate(
+    systematic_sampling =
+      if_else(unit %in% seq.int(from = starting_point, to = 100, by = 5), 
+              "In", 
+              "Out"
+              )
+    )
+
+illustrative_sampling |>
+  count(systematic_sampling)
+
+#clustering
+set.seed(853)
+
+picked_clusters <-
+  sample(x = c(0:9), size = 2)
+
+illustrative_sampling <-
+  illustrative_sampling |>
+  mutate(
+    cluster = (unit - 1) %/% 10,
+    cluster_sampling = if_else(cluster %in% picked_clusters, "In", "Out")
+    ) |>
+  select(-cluster)
+
+illustrative_sampling |>
+  count(cluster_sampling)
+
+# differences 
+
+new_labels <- c(
+  simple_random_sampling = "Simple random sampling",
+  systematic_sampling = "Systematic sampling",
+  stratified_sampling = "Stratified sampling",
+  cluster_sampling = "Cluster sampling"
+)
+
+illustrative_sampling_long <-
+  illustrative_sampling |>
+  pivot_longer(
+    cols = names(new_labels), names_to = "sampling_method",
+    values_to = "in_sample"
+    ) |>
+  mutate(sampling_method = 
+           factor(sampling_method,levels = names(new_labels)))
+
+illustrative_sampling_long |>
+  filter(in_sample == "In") |>
+  ggplot(aes(x = unit, y = in_sample)) +
+  geom_point() +
+  facet_wrap(vars(sampling_method), dir = "v", ncol = 1, 
+    labeller = labeller(sampling_method = new_labels)
+  ) +
+  theme_minimal() +
+  labs(x = "Unit", y = "Is included in sample") +
+  theme(axis.text.y = element_blank())
+
+

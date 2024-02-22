@@ -1,0 +1,226 @@
+##chapter 7 gathering data ##
+
+library(babynames)
+library(gh)
+library(here)
+library(httr)
+library(janitor)
+library(jsonlite)
+library(knitr)
+library(lubridate)
+library(pdftools)
+library(purrr)
+library(rvest)
+library(spotifyr)
+library(tesseract)
+library(tidyverse)
+library(usethis)
+library(xml2)
+
+# using API's
+
+## arXiv is an onoine repo of pre-print academic papers
+
+arxiv <- GET("http://export.arxiv.org/api/query?id_list=2111.09299")
+
+status_code(arxiv) #200 = good, 400 = bad
+
+content(arxiv) |>
+  read_xml() |>
+  html_structure()
+
+# extract content from various aspects from the XML tree by xml_child(search = n) where n is number of the branch
+data_from_arxiv <-
+  tibble(
+    title = content(arxiv) |>
+      read_xml() |>
+      xml_child(search = 8) |>
+      xml_child(search = 4) |>
+      xml_text(),
+    link = content(arxiv) |>
+      read_xml() |>
+      xml_child(search = 8) |>
+      xml_child(search = 9) |>
+      xml_attr("href")
+  )
+data_from_arxiv
+
+# NASA picture of the day
+
+NASA_APOD_20190719 <-
+  GET("https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&date=2019-07-19")
+
+# APOD July 19, 2019
+content(NASA_APOD_20190719)$date
+content(NASA_APOD_20190719)$title
+content(NASA_APOD_20190719)$explanation
+content(NASA_APOD_20190719)$url
+## use include_graphics to use image in a markdown doc
+
+
+# Dataverse and JSON files
+
+politics_datasets <-
+  fromJSON("https://demo.dataverse.org/api/search?q=politics")
+
+view(politics_datasets)
+
+## To get info on how to obtain datasets
+
+as_tibble(politics_datasets[["data"]][["items"]])
+
+#Spotify and API's build around R
+
+## Must edit enviroment with our developer identity
+edit_r_environ()
+SPOTIFY_CLIENT_ID = 'PUT_YOUR_CLIENT_ID_HERE'
+SPOTIFY_CLIENT_SECRET = 'PUT_YOUR_SECRET_HERE'
+## restart R here
+
+## Can now use spotifyr
+radiohead <- get_artist_audio_features("radiohead")
+saveRDS(radiohead, "radiohead.rds")
+
+radiohead <- as_tibble(radiohead)
+
+radiohead |>
+  mutate(album_release_date = ymd(album_release_date)) |>
+  ggplot(aes(
+    x = album_release_date,
+    y = duration_ms,
+    group = album_release_date
+  )) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.5, width = 0.3, height = 0) +
+  theme_minimal() +
+  labs(
+    x = "Album release date",
+    y = "Duration of song (ms)"
+  )
+
+### Taylors version
+
+taylor_swift <- get_artist_audio_features("taylor swift")
+the_national <- get_artist_audio_features("the national")
+
+saveRDS(taylor_swift, "taylor_swift.rds")
+saveRDS(the_national, "the_national.rds")
+
+rbind(taylor_swift, the_national, radiohead) |>
+  select(artist_name, album_release_date, valence) |>
+  mutate(album_release_date = ymd(album_release_date)) |> 
+  ggplot(aes( x = album_release_date, y = valence, color = artist_name)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth() +
+  theme_minimal() +
+  facet_wrap(facets = vars(artist_name), dir = "v") +
+  labs(
+    x = "Album release date",
+    y = "Valence",
+    color = "Artist"
+  ) +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")
+
+
+# Web Scraping
+
+
+## Prime ministers lifespan: UK
+
+# Simulation:
+set.seed(853)
+
+simulated_dataset <-
+  tibble(
+    prime_minister = babynames |>
+      filter(prop > 0.01) |>
+      distinct(name) |>
+      unlist() |>
+      sample(size = 10, replace = FALSE),
+    birth_year = sample(1700:1990, size = 10, replace = TRUE),
+    years_lived = sample(50:100, size = 10, replace = TRUE),
+    death_year = birth_year + years_lived
+  ) |>
+  select(prime_minister, birth_year, death_year, years_lived) |>
+  arrange(birth_year)
+
+simulated_dataset
+
+# Find appropriate data source: Wikipedia
+raw_data <-
+  read_html(
+    "https://en.wikipedia.org/wiki/List_of_prime_ministers_of_the_United_Kingdom"
+  )
+write_html(raw_data, "pms.html")
+
+# SelectorGadget is a useful tool for identifying where each bit of information is
+
+raw_data <- read_html("pms.html")
+parse_data_selector_gadget <-
+  raw_data |>
+  html_element(".wikitable") |>
+  html_table()
+
+head(parse_data_selector_gadget)
+
+#clean data: turn into text
+parsed_data <-
+  parse_data_selector_gadget |>
+  clean_names() |>
+  rename(raw_text = prime_minister_office_lifespan) |>
+  select(raw_text) |>
+  filter(raw_text != "Prime ministerOffice(Lifespan)") |>
+  distinct()
+
+head(parsed_data)
+
+# Parse text file
+initial_clean <-
+  parsed_data |>
+  separate(
+    raw_text, into = c("name", "not_name"), sep = "\\[", extra = "merge",
+  ) |> 
+  mutate(date = str_extract(not_name, "[[:digit:]]{4}–[[:digit:]]{4}"),
+         born = str_extract(not_name, "born[[:space:]][[:digit:]]{4}")
+         ) |>
+  select(name, date, born)
+  
+head(initial_clean)
+
+cleaned_data <-
+  initial_clean |>
+  separate(date, into = c("birth", "died"), 
+           sep = "–") |>   # PMs who have died have their birth and death years 
+  # separated by a hyphen, but we need to be careful with the hyphen as it seems 
+  # to be a slightly odd type of hyphen and we need to copy/paste it.
+  mutate(
+    born = str_remove_all(born, "born[[:space:]]"),
+    birth = if_else(!is.na(born), born, birth)
+  ) |> # Alive PMs have slightly different format
+  select(-born) |>
+  rename(born = birth) |> 
+  mutate(across(c(born, died), as.integer)) |> 
+  mutate(Age_at_Death = died - born) |> 
+  distinct() # Some of the PMs had two goes at it.
+
+head(cleaned_data)
+
+
+# Graph it beautifully
+cleaned_data |>
+  mutate(
+    still_alive = if_else(is.na(died), "Yes", "No"),
+    died = if_else(is.na(died), as.integer(2023), died)
+  ) |>
+  mutate(name = as_factor(name)) |>
+  ggplot(
+    aes(x = born, xend = died, y = name, yend = name, color = still_alive)
+    ) +
+  geom_segment() +
+  labs(
+    x = "Year of birth", y = "Prime minister", color = "PM is currently alive"
+    ) +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  theme(legend.position = "bottom")

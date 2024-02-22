@@ -1,0 +1,91 @@
+library(babynames)
+library(gh)
+library(here)
+library(httr)
+library(janitor)
+library(jsonlite)
+library(knitr)
+library(lubridate)
+library(pdftools)
+library(purrr)
+library(rvest)
+library(spotifyr)
+library(tesseract)
+library(tidyverse)
+library(usethis)
+library(xml2)
+set.seed(123)
+cite()
+individuals <- c("Matt", "Ash", "Jacki", "Rol", "Mike")
+
+# Simulate daily pages read for each individual
+simulated_reading_data <- data.frame(
+  day = rep(1:100, each = length(individuals)),
+  individual = rep(individuals, times = 100),
+  pages = round(rnorm(100 * length(individuals), mean = 40, sd = 10))
+)
+
+# correlates the couples pages read
+couple_corr <- 0.9
+couple_index <- which(individuals %in% c("Ash", "Mike"))
+simulated_reading_data$Pages[couple_index] <- simulated_reading_data$Pages[couple_index] +
+  round(couple_corr * simulated_reading_data$Pages[couple_index %% 2 + 1])
+
+head(simulated_reading_data)
+
+#graph
+
+
+ggplot(simulated_reading_data, aes(x = day, y = pages, color = individual, group = individual)) +
+  geom_line() +
+  labs(title = "Daily Pages Read by Individuals",
+       x = "Day",
+       y = "Pages Read") +
+  theme_minimal()
+view(graph)
+
+api <- GET("https://api.football-data.org/v4/matches")
+
+status_code(api)
+content(api)
+
+# Based on Tyler Bradley and Monica Alexander
+library(tidyverse)
+library(gh)
+repos <- gh("/users/RohanAlexander/repos", per_page = 100)
+repo_info <- tibble(
+  name = map_chr(repos, "name"),
+  created = map_chr(repos, "created_at"),
+  full_name = map_chr(repos, "full_name"),
+)
+tail(repo_info)
+
+# Based on Carl Schmertmann
+
+library(tidyverse)
+
+my_indicator <- 68
+my_location <- 32
+my_startyr <- 1995
+my_endyr <- 1995
+
+url <- paste0(
+  "https://population.un.org/dataportalapi/api/v1",
+  "/data/indicators/",
+  my_indicator,
+  "/locations/",
+  my_location,
+  "/start/",
+  my_startyr,
+  "/end/",
+  my_endyr,
+  "/?format=csv"
+)
+
+un_data <- read_delim(file = url, delim = "|", skip = 1)
+
+un_data |>
+  filter(AgeLabel == 20 & TimeLabel == 1996) |>
+  select(Value)
+
+map()

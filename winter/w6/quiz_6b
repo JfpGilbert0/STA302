@@ -1,0 +1,32 @@
+library(tidyverse)
+library(validate)
+library(testthat)
+
+#SIimulate Data
+set.seed(111)
+user_data <- tibble(
+  user_id = (1:100),
+  total_comments = round(rgamma(100, shape = 0.5, scale = 30))  # gamma distriution has negative skew
+)
+
+
+#testing
+
+rules <- validator(
+  is.numeric(total_comments),
+  is.numeric(user_id),
+  total_comments >=  0,
+  is_unique(user_id),
+  max(total_comments) < 1000000)
+
+out <- confront(user_data, rules)
+
+#Graphing
+
+ggplot(user_data, aes(x = total_comments)) +
+  geom_histogram(bins = 20, fill = "darkgrey", color = "black") +
+  labs(
+       title = "Distribution of User Comments",
+       x = "Number of Comments",
+       y = "Frequency") +
+  theme_minimal()
