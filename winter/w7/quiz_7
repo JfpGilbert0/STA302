@@ -1,0 +1,49 @@
+library(tidyverse)
+library(rstanarm)
+set.seed(555)
+# Simulate london building data
+simulated_building_data <- tibble(
+  id = 1:500,
+  year = sample(1850:2010, 500, replace = TRUE),
+  floor = ceiling(rgamma(500, shape = 0.5 + 0.025 * (year - 1800), scale = 10)),
+  residential = sample(c(TRUE, FALSE), 500 , replace = TRUE, prob = c(0.8, 0.2)),
+  location = sample(c("North", "South", "East", "West"), 500, replace = TRUE)
+)
+
+#Tests
+  class(simulated_building_data$id) == "numeric"
+  class(simulated_building_data$year) == "numeric"
+  class(simulated_building_data$year) == "numeric"
+  class(simulated_building_data$residential) == "logical"
+  class(simulated_building_data$location) == "character"
+  test_that("All buildings newer than 1850", 
+    {expect_true(all(simulated_building_data$year >= 1850))})
+  test_that("All buildings older than present", 
+    {expect_true(all(simulated_building_data$year < 2024))})
+  test_that("Location column has valid values", {
+  valid_locations <- c("North", "South", "East", "West")
+  expect_true(all(simulated_building_data$location %in% valid_locations))
+})
+
+#scatterplot
+ggplot(simulated_building_data, aes(x = year, y = floor)) +
+  geom_point() +
+  labs(title = "Scatterplot of Year vs Number of Floors",
+       x = "Year",
+       y = "Number of Floors") +
+  theme_minimal()
+
+model <- lm(floor ~ year, data = simulated_building_data)
+summary(model)
+
+simulate <- function(n) {
+  race <- sample(c("White", "Black", "Asian"), n, replace = TRUE)
+  gender <- sample(c("Male", "Female"), n, replace = TRUE)
+  vote_preference <- ifelse(race == "White", 0.7, 0.3) +
+                      ifelse(gender == "Male", 0.2, -0.2) +
+                      rnorm(n, mean = 0, sd = 0.2)
+  
+  data <- data.frame(race, gender, vote_preference)
+  return(data)
+}
+simulated_data <- simulate(100)

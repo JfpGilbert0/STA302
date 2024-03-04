@@ -1,0 +1,92 @@
+library(tidyverse)
+library(rstanarm)
+library(knitr)
+
+# create a table of randomly generated values from a normal distribution
+set.seed(2302)
+observations <- tibble(sample = rnorm(1000, mean = 1, sd = 1))
+
+sum(observations$sample > 1 & observations$sample <= 1.1)
+
+t.test(observations$sample, mu = 1)
+
+estimated_mean <-
+  sum(observations$sample) / nrow(observations)
+
+observations <-
+  observations |>
+  mutate(diff_square = (sample - estimated_mean) ^ 2)
+
+estimated_standard_deviation <-
+  sqrt(sum(observations$diff_square) / (nrow(observations) - 1))
+
+estimated_standard_error <-
+  estimated_standard_deviation / sqrt(nrow(observations))
+
+kable(
+  tibble(mean = estimated_mean,
+         sd = estimated_standard_deviation,
+         se = estimated_standard_error),
+  col.names = c(
+    "Estimated mean",
+    "Estimated standard deviation",
+    "Estimated standard error"
+  ),
+  digits = 2,
+  align = c("l", "r", "r"),
+  booktabs = TRUE,
+  linesep = ""
+  )
+# The following is a simulation of a 'real' data generating processes errors
+## data limit of 900
+first_cent <- observations[1:100, ]
+
+observations[901:1000, ] <- first_cent
+
+# absolute value of half the negative results
+bad_negatives <-
+  observations %>%
+    mutate(
+           sample = ifelse(sample < 0 & sample(c(TRUE, FALSE), n(), replace = TRUE),
+                           abs(sample), sample))
+
+summarise_all(bad_negatives, ~ sum(. < 0, na.rm = TRUE))
+
+#times values between 1, 1.1 by 0.1
+final_data <- bad_negatives %>%
+    mutate(sample =  ifelse(1.0 <= sample & sample <= 1.1, sample*0.1, sample ))
+
+summarise_all(final_data, ~ sum(. > 1 & . < 1.1, na.rm = TRUE))
+
+summary(final_data)
+
+t.test(final_data$sample, mu = 1)
+# create a table of results
+
+estimated_mean <-
+  sum(final_data$sample) / nrow(final_data)
+
+final_data <-
+  final_data |>
+  mutate(diff_square = (sample - estimated_mean) ^ 2)
+
+estimated_standard_deviation <-
+  sqrt(sum(final_data$diff_square) / (nrow(final_data) - 1))
+
+estimated_standard_error <-
+  estimated_standard_deviation / sqrt(nrow(final_data))
+
+kable(
+  tibble(mean = estimated_mean,
+         sd = estimated_standard_deviation,
+         se = estimated_standard_error),
+  col.names = c(
+    "Estimated mean",
+    "Estimated standard deviation",
+    "Estimated standard error"
+  ),
+  digits = 2,
+  align = c("l", "r", "r"),
+  booktabs = TRUE,
+  linesep = ""
+  )

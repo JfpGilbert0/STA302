@@ -1,0 +1,170 @@
+---
+title: "Problems in practice: errors in data collection"
+author: "Jacob Gilbert"
+thanks: " Github link: https://github.com/JfpGilbert0/Simulated-data-collection. thanks to Alexander Guarasci for review"
+format: pdf
+
+---
+
+
+
+
+# Introduction
+When doing data analysis it is not uncommon for mistakes to be made. This can be accentuated when data is going through many hands, as well as problems with the hardware or source of the data.
+The following is a simulated example of how problems in the data generating process can lead to bad analysis. 1,000 data points were generated and to simulate some common problems in data collection changes were made. The data was created in R (@citeR) using packages tidyverse (@citetidy) and knitr (@knitr).
+
+
+ Originally this data was created by a random sample of points from a normal distribution with mean and sd of 1. As the sample is somewhat substantial in size the estimated mean and standard deviation from the sample are very close to that of the population distribution.
+```{R}
+#| echo: false
+#| warning: false
+library(tidyverse)
+library(knitr)
+
+
+# create a table of randomly generated values from a normal distribution
+set.seed(2302)
+observations <- tibble(sample = rnorm(1000, mean = 1, sd = 1))
+# The following is a simulation of a 'real' data generating processes errors
+## data limit of 900
+first_cent <- observations[1:100, ]
+
+
+observations[901:1000, ] <- first_cent
+
+
+# absolute value of half the negative results
+bad_negatives <-
+  observations %>%
+    mutate(
+           sample = ifelse(sample < 0 & sample(c(TRUE, FALSE), n(), replace = TRUE),
+                           abs(sample), sample))
+
+#times values between 1, 1.1 by 0.1
+final_data <- bad_negatives %>%
+    mutate(sample =  ifelse(1.0 <= sample & sample <= 1.1, sample*0.1, sample ))
+
+# create a table of results
+
+
+estimated_mean <-
+  sum(final_data$sample) / nrow(final_data)
+
+
+final_data <-
+  final_data |>
+  mutate(diff_square = (sample - estimated_mean) ^ 2)
+```
+
+
+```{R, fig.cap = "Summary statistics of the original distribution"}
+#| echo: false
+#| warning: false
+#| label: fig-1
+estimated_mean <-
+  sum(observations$sample) / nrow(observations)
+
+
+observations <-
+  observations |>
+  mutate(diff_square = (sample - estimated_mean) ^ 2)
+
+
+estimated_standard_deviation <-
+  sqrt(sum(observations$diff_square) / (nrow(observations) - 1))
+
+
+estimated_standard_error <-
+  estimated_standard_deviation / sqrt(nrow(observations))
+p_value_a <- 0.31870
+
+
+kable(
+  tibble(mean = estimated_mean,
+         sd = estimated_standard_deviation,
+         se = estimated_standard_error,
+         p_value = p_value_a ),
+  col.names = c(
+    "Estimated mean",
+    "Estimated standard deviation",
+    "Estimated standard error",
+    "P-value"
+  ),
+  digits = 2,
+  align = c("l", "r", "r"),
+  booktabs = TRUE,
+  linesep = ""
+  )
+
+
+```
+
+
+# Simulation
+The changes made to the sample are to simulate the following real life situations.
+- A problem with the data collecting instrument that only has memory for 900 observations. As a result of this the first 100 observations are repeated.
+- Human error led to half of the data points below 0 being converted to their absolute value.
+- Any number between 1 and 1.1 was divided by 10.
+ 
+# Expectation
+We would expect these errors to have mixed effects on the analysis dont on the dataset. Firstly the repetition of data points could have unpredictable effects on the mean and standard deviation. The impact will be determined by what is in the repeated data. If there are extreme points in the first 100 elements then the changes could be great, if the points are mostly around the mean then this cause the opposite bias.
+The effect of changing the sign of negative is clear. This would cause bias towards the correct mean and decrease the observed standard deviation. The final change causes numbers originally less than 0.1 away from the mean, the other way, by 0.9. In this simulation there are 46 such occurrences, almost 5% of the sample, thus this change is expected to be significant.
+
+
+# Results
+
+
+```{R, fig.label = "Summary statistics of simulated data"}
+#| echo: false
+#| warning: false
+#| label: fig-2
+# create a table of results
+
+
+estimated_mean <-
+  sum(final_data$sample) / nrow(final_data)
+
+
+final_data <-
+  final_data |>
+  mutate(diff_square = (sample - estimated_mean) ^ 2)
+
+
+estimated_standard_deviation <-
+  sqrt(sum(final_data$diff_square) / (nrow(final_data) - 1))
+
+
+estimated_standard_error <-
+  estimated_standard_deviation / sqrt(nrow(final_data))
+
+
+p_value_b <- 0.3424
+
+
+kable(
+  tibble(mean = estimated_mean,
+         sd = estimated_standard_deviation,
+         se = estimated_standard_error,
+         P_value = p_value_b),
+  col.names = c(
+    "Estimated mean",
+    "Estimated standard deviation",
+    "Estimated standard error",
+    "P-Value"
+  ),
+  digits = 2,
+  align = c("l", "r", "r"),
+  booktabs = TRUE,
+  linesep = ""
+  )
+
+
+```
+
+
+We see that both the mean and the standard deviation have changed. Due to the conflicting effects of the different collection errors it is unclear which is the strongest driving force for this change. Looking at the P-value we see that the confidence that the population mean is 1 has fallen from the original. This is a case when the biases are moving us further away from our hypothesis than is true. This means conclusions being taken are incorrect and is problematic.
+
+
+# solutions in practice
+There are many ways to avoid problems such as these. Using the correct tools for the job is important. Underpowered hardware is a problem that is easily avoided by bringing something stronger than you need, this is not always possible however should be done when it is. Creating an excellent chain of custody with data is a great way to catch problems and find where they are originating. DBT is a great solution to this as it creates a solid data cleaning structure from raw to cleaned. The reason this is useful is when problems occur you can get quick flags being raised and 'co-ordinates' for the problem area. This is reliant on having appropriate tests at every point of the data cleaning process. Testing is at the heart of having clean usable data, this can create a strong safety net for common problems.
+

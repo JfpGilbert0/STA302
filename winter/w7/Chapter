@@ -1,0 +1,102 @@
+library(beepr)
+library(broom)
+library(broom.mixed)
+library(knitr)
+library(modelsummary)
+library(purrr)
+library(rstanarm)
+library(testthat)
+library(tidyverse)
+
+
+set.seed(853)
+
+num_observations <- 200
+expected_relationship <- 8.4
+fast_time <- 15
+good_time <- 30
+
+sim_run_data <-
+  tibble(
+    five_km_time =
+      runif(n = num_observations, min = fast_time, max = good_time),
+    noise = rnorm(n = num_observations, mean = 0, sd = 20),
+    marathon_time = five_km_time * expected_relationship + noise
+  ) |>
+  mutate(
+    five_km_time = round(x = five_km_time, digits = 1),
+    marathon_time = round(x = marathon_time, digits = 1)
+  ) |>
+  select(-noise)
+
+
+  base_plot <- 
+  sim_run_data |>
+  ggplot(aes(x = five_km_time, y = marathon_time)) +
+  geom_point(alpha = 0.5) +
+  labs(
+    x = "Five-kilometer time (minutes)",
+    y = "Marathon time (minutes)"
+  ) +
+  theme_classic()
+
+# Panel (a)
+base_plot
+
+# Panel (b)
+base_plot +
+  geom_smooth(
+    method = "lm",
+    se = FALSE,
+    color = "black",
+    linetype = "dashed",
+    formula = "y ~ x"
+  )
+
+# Panel (c)
+base_plot +
+  geom_smooth(
+    method = "lm",
+    se = TRUE,
+    color = "black",
+    linetype = "dashed",
+    formula = "y ~ x"
+  )
+
+# Check the class and number of observations are as expected
+stopifnot(
+  class(sim_run_data$marathon_time) == "numeric",
+  class(sim_run_data$five_km_time) == "numeric",
+  nrow(sim_run_data) == 200
+)
+
+sim_run_data_first_model <-
+  lm(
+    marathon_time ~ five_km_time,
+    data = sim_run_data
+  )
+
+stopifnot(between(
+  sim_run_data_first_model$coefficients[2],
+  6,
+  10
+))
+
+#change to centred model
+sim_run_data <-
+  sim_run_data |>
+  mutate(centered_time = five_km_time - mean(sim_run_data$five_km_time))
+
+sim_run_data_centered_model <-
+  lm(
+    marathon_time ~ centered_time,
+    data = sim_run_data
+  )
+
+#generates columns for residuals and stuff
+sim_run_data <-
+  augment(
+    sim_run_data_first_model,
+    data = sim_run_data
+  )
+
