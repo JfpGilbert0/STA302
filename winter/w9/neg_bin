@@ -1,0 +1,104 @@
+library(boot)
+library(broom.mixed)
+library(collapse)
+library(dataverse)
+library(gutenbergr)
+library(janitor)
+library(knitr)
+library(marginaleffects)
+library(modelsummary)
+library(rstanarm)
+library(tidybayes)
+library(tidyverse)
+
+
+alberta_cod <-
+  read_csv(
+    "https://open.alberta.ca/dataset/03339dc5-fb51-4552-97c7-853688fc428d/resource/3e241965-fee3-400e-9652-07cfbf0c0bda/download/deaths-leading-causes.csv",
+    skip = 2,
+    col_types = cols(
+      `Calendar Year` = col_integer(),
+      Cause = col_character(),
+      Ranking = col_integer(),
+      `Total Deaths` = col_integer()
+    )
+  ) |>
+  clean_names() |>
+  add_count(cause) |>
+  mutate(cause = str_trunc(cause, 30))
+
+alberta_cod |>
+  filter(
+    calendar_year == 2021,
+    ranking <= 10
+  ) |>
+  mutate(total_deaths = format(total_deaths, big.mark = ",")) |>
+  kable(
+    col.names = c("Year", "Cause", "Ranking", "Deaths", "Years"),
+    align = c("l", "r", "r", "r", "r"),
+    digits = 0, booktabs = TRUE, linesep = ""
+  )
+
+alberta_cod_top_five <-
+  alberta_cod |>
+  filter(
+    calendar_year == 2021,
+    n == 21
+  ) |>
+  slice_max(order_by = desc(ranking), n = 5) |>
+  pull(cause)
+
+alberta_cod <-
+  alberta_cod |>
+  filter(cause %in% alberta_cod_top_five)
+
+alberta_cod |>
+  ggplot(aes(x = calendar_year, y = total_deaths, color = cause)) +
+  geom_line() +
+  theme_minimal() +
+  scale_color_brewer(palette = "Set1") +
+  labs(x = "Year", y = "Annual number of deaths in Alberta") +
+  facet_wrap(vars(cause), dir = "v", ncol = 1) +
+  theme(legend.position = "none")
+
+cause_of_death_alberta_poisson <-
+  stan_glm(
+    total_deaths ~ cause,
+    data = alberta_cod,
+    family = poisson(link = "log"),
+    seed = 853
+  )
+
+cause_of_death_alberta_neg_binomial <-
+  stan_glm(
+    total_deaths ~ cause,
+    data = alberta_cod,
+    family = neg_binomial_2(link = "log"),
+    seed = 853
+  )
+
+coef_short_names <- 
+  c("causeAll other forms of chronic ischemic heart disease"
+    = "causeAll other forms of...",
+    "causeMalignant neoplasms of trachea, bronchus and lung"
+    = "causeMalignant neoplas...",
+    "causeOrganic dementia"
+    = "causeOrganic dementia",
+    "causeOther chronic obstructive pulmonary disease"
+    = "causeOther chronic obst..."
+    )
+
+modelsummary(
+  list(
+    "Poisson" = cause_of_death_alberta_poisson,
+    "Negative binomial" = cause_of_death_alberta_neg_binomial
+  ),
+  coef_map = coef_short_names
+)
+
+
+pp_check(cause_of_death_alberta_poisson) +
+  theme(legend.position = "bottom")
+
+pp_check(cause_of_death_alberta_neg_binomial) +
+  theme(legend.position = "bottom")

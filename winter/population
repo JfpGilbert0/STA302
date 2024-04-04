@@ -1,0 +1,32 @@
+library(tidyr)
+library(dplyr)
+library(worldbank)
+library(countrycode)
+install.packages("countrypops")
+dplyr::glimpse(countrypops)
+countrypops
+library(remotes)
+remotes::install_github("wpgp/wopr")
+
+install.packages("wbstats")
+library(wbstats)
+str(wb_cachelist, max.level = 1)
+pop_data <- wb_data("SP.POP.TOTL", country = iso3c_codes, start_date = 2022, end_date = 2022)
+iso3c_codes <- c(
+  "CHE", "NZL", "BRA", "IRL", "DNK", "FIN", "ZAF", "MYS", "GBR", "ESP", "AUS", 
+  "AFG", "ALB", "AGO", "DZA", "BGD", "ATG", "BLZ", "ARM", "BEN", "AZE", "BTN", "BLR", 
+  "BFA", "BOL", "BDI", "BIH", "KHM", "BWA", "CMR", "COL", "CPV", "CUB", "CAF", "ECU", 
+  "TCD", "EGY", "COM", "SLV", "COG", "FJI", "GAB", "CIV", "GEO", "PRK", "GTM", 
+  "COD", "GUY", "DJI", "HND", "DMA", "IRQ", "GNQ", "JAM", "ERI", "JOR", "SWZ", 
+  "ETH", "LBY", "MUS", "GHA", "MNG", "GRD", "MNE", "GIN", "MAR", "GNB", "NAM", "HTI", 
+  "NGA", "KEN", "MKD", "KIR", "PAK", "KGZ", "PRY", "LAO", "PER", "LBN", "MDA", "LSO", 
+  "KNA", "LBR", "SRB", "MDG", "SYC", "MWI", "LKA", "MDV", "TUN", "MLI", "UZB", "MHL", 
+  "VEN", "MRT", "VNM", "FSM", "PSE", "MOZ", "MMR", "NRU", "NPL", "NIC", "NER", 
+  "PLW", "PNG", "RWA", "LCA", "VCT", "WSM", "STP", "SEN", "SLE", "SLB", "SOM", 
+  "SSD", "SDN", "SUR", "SYR", "TJK", "TLS", "TGO", "TON", "TUV", "UGA", "UKR", 
+  "TZA", "VUT", "YEM", "ZMB", "ZWE"
+)
+
+sum(pop_data$SP.POP.TOTL)
+length(iso3c_codes)
+pop_data <- countrypop(indicator = "SP.POP.TOTL", country = iso_codes, mrv = 1)
