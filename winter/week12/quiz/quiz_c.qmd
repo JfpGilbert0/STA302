@@ -1,0 +1,24 @@
+---
+title: "A dicussion of George Box's quote"
+author: "Jacob Gilbert"
+format: pdf
+bibliography: references.bib
+---
+
+
+# Introduction
+Models are a simplification of the real world, and are used to understand it. However simplifying comes with its negatives as some information is unobserved in the model. George Box's quote embodies the fact that it is important to understand the limitations of models, but also focuses on the critical aspects of the problem and how the model aids in understanding these aspects. Models can be immensely useful when focusing on what they do show rather than focusing on the minor details that they miss
+
+
+# Climate Change
+In the context of climate change, scientists develop complex models to predict and understand potential climate scenarios. These are based on a variety of historical factors such as emissions and solar radiation to predict global temperatures. However, we know very little about the damages likely to result from higher temperatures @citeclimate. Fuhrer weather factors are very unpredictable, and acts of god will forever occur in the world. So these models are imperfect, does that mean we should ignore them completely? In short no, these are the best models we currently have available (@citeclimate). And the results they show still convey information to the public. Global knowledge on the subject is higher as a result and these models can help observe what efforts to deal with climate change may contribute. Or on the other side of the coin, what is causing greater negative impacts.
+
+
+# Financial models
+Financial markets have billions of dollars riding on the predictive models set up to determine what the market will do. And hedge funds will assure you that they are correct, and that they know what will happen. However theory can only get you so far, the 2008 crisis led to a systemic failure of the economic profession (@citeecon). The failure of the economic and statistical models that backboned the financial risk markets failed here and lef millions high and dry. However before and since the models kept the market lucrative. Perhaps large external and internal shocks should not be used to judge the models efficiency. What was wrong in these previous models that did not predict the financial crisis allows us to see what was wrong in the markets, and this information is also invaluable Making sure to use the models appropriately and focusing on what they can do is the key to using the power of modelling.
+
+
+# Conclusion
+In conclusion, Box's quote serves as a reminder to not always hold the model accountable when things don't pan out, or the predictions don't serve a purpose you may want. Instead focus on what is "importantly wrong" models can provide insightful conclusions about the world. A critical approach is needed to use models to their full potential.
+
+# References
